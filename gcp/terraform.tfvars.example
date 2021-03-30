@@ -1,0 +1,16 @@
+# This is a list of each of the available variables and their default settings.
+# If you wish to override any of these, copy this file as `terraform.tfvars`
+# and update the variables accordingly.
+
+kibana_repo_url = "https://github.com/elastic/kibana"
+kibana_repo_branch = "master"
+kibana_server_port = 5601
+
+public_key_path = "~/.ssh/id_rsa.pub"
+private_key_path = "~/.ssh/id_rsa"
+
+gcp_credentials_file = "./credentials.json"
+gcp_project = "my-gcp-project-123456"
+gcp_region = "us-west1"
+gcp_zone = "us-west1-a"
+gcp_instance_type = "e2-standard-4"
