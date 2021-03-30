@@ -1,0 +1,19 @@
+# This is a list of each of the available variables and their default settings.
+# If you wish to override any of these, copy this file as `terraform.tfvars`
+# and update the variables accordingly.
+
+kibana_repo_url = "https://github.com/elastic/kibana"
+kibana_repo_branch = "master"
+kibana_server_port = 5601
+
+public_key_path = "~/.ssh/id_rsa.pub"
+private_key_path = "~/.ssh/id_rsa"
+
+# Instructions for retrieving these values: https://docs.microsoft.com/en-us/azure/active-directory/develop/howto-create-service-principal-portal
+azure_subscription_id = "XXXXX-XXXX-XXXXX-XXX-XXXXX"
+azure_client_id       = "XXXXX-XXXX-XXXXX-XXX-XXXXX"
+azure_client_secret   = "XXXXX-XXXX-XXXXX-XXX-XXXXX"
+azure_tenant_id       = "XXXXX-XXXX-XXXXX-XXX-XXXXX"
+
+azure_region = "westus2"
+azure_vm_size = "Standard_D4ds_v4"
