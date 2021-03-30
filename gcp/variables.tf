@@ -13,7 +13,7 @@ variable "kibana_repo_branch" {
 variable "kibana_server_port" {
   default     = 5601
   type        = number
-  description = "Kibana's dev server port (5601 unless you have explicitly changed it)."
+  description = "Kibana's dev server port (5601 unless you have explicitly changed it in `kibana.dev.yml`)."
 }
 
 variable "public_key_path" {
