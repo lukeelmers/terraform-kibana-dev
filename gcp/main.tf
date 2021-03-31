@@ -17,7 +17,7 @@ provider "google" {
 }
 
 resource "google_compute_instance" "kbn_vm" {
-  name         = "kbn-${var.kibana_repo_branch}"
+  name         = "kbn-dev-vm"
   machine_type = var.gcp_instance_type
 
   boot_disk {
