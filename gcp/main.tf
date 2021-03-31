@@ -31,6 +31,10 @@ resource "google_compute_instance" "kbn_vm" {
     ssh-keys = "${var.gcp_vm_admin_username}:${file(var.public_key_path)}"
   }
 
+  # For unknown reasons, this needs to be run in `metadata_startup_script` instead of via
+  # the `remote-exec` provisioner in order for GCP to succcessfully install build-essential.
+  metadata_startup_script = "sudo apt-get update; sudo apt-get install build-essential -y"
+
   network_interface {
     network = "default"
 

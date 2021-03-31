@@ -66,6 +66,7 @@ resource "azurerm_linux_virtual_machine" "kbn_vm" {
   # Change permissions on bash script and execute from azure-user.
   provisioner "remote-exec" {
     inline = [
+      "sudo apt-get update && sudo apt-get install build-essential -y",
       "chmod +x /tmp/bootstrap.sh",
       "nohup /tmp/bootstrap.sh ${var.kibana_repo_url} ${var.kibana_repo_branch}",
     ]

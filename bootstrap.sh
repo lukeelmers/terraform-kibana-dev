@@ -5,8 +5,8 @@ set -ex
 REPO=$1
 BRANCH=$2
 
-sudo apt-get update && sudo apt-get install build-essential -y
-sudo sysctl -w fs.inotify.max_user_watches=524288 # need to increase this value to run Kibana in dev mode
+# need to increase this value to run Kibana in dev mode
+sudo sysctl -w fs.inotify.max_user_watches=524288
 
 # install nvm
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.37.2/install.sh | bash
