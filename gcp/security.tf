@@ -1,5 +1,5 @@
 resource "google_compute_firewall" "kbn_firewall" {
-  name    = "kbn-firewall"
+  name    = "${var.gcp_name}-firewall"
   network = google_compute_network.kbn_vpc.name
 
   # allow tcp/ssh from anywhere
