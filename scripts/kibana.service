@@ -1,0 +1,10 @@
+[Unit]
+Description=Kibana dev service
+[Service]
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/kibana
+ExecStart=/usr/local/bin/node /home/ubuntu/kibana/scripts/kibana --dev --no-base-path
+
+[Install]
+WantedBy=multi-user.target

@@ -1,7 +1,9 @@
 **/.terraform*
 *.tfstate*
 *.tfvars
+*.log
 
 !.terraform.lock.hcl
 
 credentials*.json
+deployments.txt
