@@ -24,7 +24,7 @@ if [[  $type && $type == "tag" ]];
 
 if [[  $type && $type == "branch" ]];
     then
-        branch="${branch}"
+        branch="${value}"
         gcp_name="kbn-dev-v1-${type}-${value//./-}"
     fi
 
@@ -45,17 +45,14 @@ case $action in
 
   deploy)
     terraform -chdir=./gcp workspace new "${workspace_id}"
-    START=$(date +%s)
     log "Deploying instance of ${type} ${value}, ${repo_url}, ${branch}"
     terraform -chdir=./gcp apply \
       -var="gcp_name=${gcp_name}" \
       -var="kibana_repo_url=${repo_url}" \
       -var="kibana_repo_branch=${branch}" \
       -auto-approve
-    terraform_output=$(terraform -chdir=./gcp output -json | jq  -r '.kibana_repo_url.value')
-    echo "${workspace_id},${gcp_name},${repo_url},${branch},${terraform_output}" >> deployments.txt
-    END=$(date +%s)
-    DIFF=$(echo "$END - $START" | bc)
+    kibana_url=$(terraform -chdir=./gcp output -json | jq  -r '.kibana_url.value')
+    echo "${workspace_id},${gcp_name},${repo_url},${branch},${kibana_url}" >> deployments.txt
     log "Success deploying instance (Duration: ${DIFF}s) of ${type} ${value}, ${repo_url}, ${branch}"
     ;;
 
@@ -100,6 +97,6 @@ case $action in
        cat $deployments_file
     fi
     echo "----- Usage -----"
-    echo "Use ./kbn-gcp.sh (numberOfPR) (deploy|destroy|update|status|ssh) to apply changes"
+    echo "Use ./kbn-gcp.sh (numberOfPR) (deploy|destroy|update|status|ssh) (branch|tag|pr) (nameOfBranchOrTagOrPR)"
     ;;
 esac
