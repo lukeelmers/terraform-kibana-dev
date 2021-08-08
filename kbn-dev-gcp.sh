@@ -8,6 +8,12 @@ value=$3
 repo_url=${repo_url:-"https://github.com/elastic/kibana"}
 #this is the id for the gcp instance, it has to be unique
 gcp_name="kbn-dev-v1-${type}-${value}"
+#this is workspace id for terraform, it has to be unique
+workspace_id="${type}-${value}"
+#file for adding and removing deployments
+deployments_file="${SCRIPT_DIR}/deployments.txt"
+
+log_file="${SCRIPT_DIR}/kbn_dev.log"
 
 if [[ $type && $type == "pr" ]];
     then
@@ -30,13 +36,6 @@ if [[  $type && $type == "branch" ]];
     fi
 
 
-#this is workspace id for terraform, it has to be unique
-workspace_id="${type}-${value}"
-#file for adding and removing deployments
-deployments_file="${SCRIPT_DIR}/deployments.txt"
-
-log_file="${SCRIPT_DIR}/kbn_gcp.log"
-
 log(){
     echo "$1"
     echo "$(date +'[%F %T %Z]') - ${workspace_id} $1 " >> $log_file
@@ -45,6 +44,7 @@ log(){
 case $action in
 
   deploy)
+    START=$(date +%s)
     terraform -chdir="${SCRIPT_DIR}/gcp" workspace new "${workspace_id}"
     log "Deploying instance of ${type} ${value}, ${repo_url}, ${branch}"
     terraform -chdir="${SCRIPT_DIR}/gcp" apply \
@@ -57,12 +57,17 @@ case $action in
     if [[ $kibana_url != 'null' ]];
       then
         echo "${workspace_id},${gcp_name},${repo_url},${branch},${kibana_url}" >> deployments.txt
-        log "Success deploying instance (Duration: ${DIFF}s),${kibana_url}"
+        log "Success deploying instance ${kibana_url}"
+        log "Deploying instance was successful"
+        log "Checking for server to be available"
+        eval "ssh -q -o StrictHostKeyChecking=no ubuntu@${public_ip} /tmp/check_server_online.sh"
+        log "Checking for UI to be available"
+        eval "ssh -q -o StrictHostKeyChecking=no ubuntu@${public_ip} /tmp/check_ui_online.sh"
+        log "UI is available"
+        END=$(date +%s)
+        DIFF=$(echo "$END - $START" | bc)
+        log "Whole process took ${DIFF} seconds"
       fi
-    log "Deploying instance was successful"
-    log "Checking for UI to be available"
-    eval "ssh -q -o StrictHostKeyChecking=no ubuntu@${public_ip} /tmp/check_ui_online.sh"
-    log "UI is available"
     ;;
 
   status)

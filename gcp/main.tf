@@ -55,7 +55,7 @@ resource "google_compute_instance" "kbn_vm" {
   provisioner "remote-exec" {
     inline = [
       "chmod +x /tmp/*.sh",
-      "/tmp/install.sh ${var.kibana_repo_url} ${var.kibana_repo_branch} && /tmp/bootstrap.sh && /tmp/start.sh && /tmp/check_server_online.sh ",
+      "/tmp/install.sh ${var.kibana_repo_url} ${var.kibana_repo_branch} && /tmp/bootstrap.sh && /tmp/start.sh ",
     ]
   }
 
