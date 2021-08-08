@@ -12,7 +12,6 @@ if [[ $type && $type == "pr" ]];
         content=$(curl -s -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/elastic/kibana/pulls/${value})
         repo_url=$( jq -r  '.head.repo.html_url' <<< "${content}" )
         branch=$( jq -r  '.head.ref' <<< "${content}" )
-        echo $repo_url
     fi
 
 
@@ -51,9 +50,17 @@ case $action in
       -var="kibana_repo_url=${repo_url}" \
       -var="kibana_repo_branch=${branch}" \
       -auto-approve
+    public_ip=$(terraform -chdir=./gcp output -json | jq  -r '.public_ip.value')
     kibana_url=$(terraform -chdir=./gcp output -json | jq  -r '.kibana_url.value')
-    echo "${workspace_id},${gcp_name},${repo_url},${branch},${kibana_url}" >> deployments.txt
-    log "Success deploying instance (Duration: ${DIFF}s) of ${type} ${value}, ${repo_url}, ${branch}"
+    if [[ $kibana_url != 'null' ]];
+      then
+        echo "${workspace_id},${gcp_name},${repo_url},${branch},${kibana_url}" >> deployments.txt
+        log "Success deploying instance (Duration: ${DIFF}s),${kibana_url}"
+      fi
+    log "Deploying instance was successful"
+    log "Checking for UI to be available"
+    eval "ssh -q -o StrictHostKeyChecking=no ubuntu@${public_ip} /tmp/check_ui_online.sh"
+    log "UI is available"
     ;;
 
   status)
@@ -64,8 +71,8 @@ case $action in
 
   ssh)
     terraform -chdir=./gcp workspace select "${workspace_id}"
-    terraform_output=$(terraform -chdir=./gcp output -json | jq  -r '.public_ip.value')
-    eval "ssh -o StrictHostKeyChecking=no ubuntu@${terraform_output}"
+    public_ip=$(terraform -chdir=./gcp output -json | jq  -r '.public_ip.value')
+    eval "ssh -o StrictHostKeyChecking=no ubuntu@${public_ip}"
     ;;
 
   update)
@@ -76,7 +83,7 @@ case $action in
     eval "ssh -q -o StrictHostKeyChecking=no ubuntu@${terraform_output} bash /tmp/update.sh"
     eval "ssh -q -o StrictHostKeyChecking=no ubuntu@${terraform_output} bash /tmp/bootstrap.sh"
     eval "ssh -q -o StrictHostKeyChecking=no ubuntu@${terraform_output} bash /tmp/start.sh"
-    eval "ssh -q -o StrictHostKeyChecking=no ubuntu@${terraform_output} bash /tmp/check_online.sh"
+    eval "ssh -q -o StrictHostKeyChecking=no ubuntu@${terraform_output} bash /tmp/check_server_online.sh"
     END=$(date +%s)
     DIFF=$(echo "$END - $START" | bc)
     log "Success updating instance (Duration: ${DIFF}s) of ${type} ${value}, ${repo_url}, ${branch}"
