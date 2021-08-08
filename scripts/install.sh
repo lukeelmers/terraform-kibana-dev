@@ -11,7 +11,6 @@ sudo sysctl -w fs.inotify.max_user_watches=524288
 # clone kibana repo, check out branch, and configure environment
 git clone "$REPO.git"
 git -C ~/kibana checkout $BRANCH
-cp /tmp/kibana.dev.yml ~/kibana/config/
 sudo touch /var/log/kibana.log
 sudo chown ubuntu /var/log/kibana.log
 

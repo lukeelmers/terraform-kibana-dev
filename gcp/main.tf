@@ -51,11 +51,6 @@ resource "google_compute_instance" "kbn_vm" {
     destination = "/tmp/"
   }
 
-  provisioner "file" {
-    source      = "../kibana.dev.yml"
-    destination = "/tmp/kibana.dev.yml"
-  }
-
   # Change permissions on bash script and execute from ubuntu user.
   provisioner "remote-exec" {
     inline = [
