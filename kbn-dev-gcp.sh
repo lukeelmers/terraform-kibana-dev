@@ -95,7 +95,7 @@ case $action in
     terraform -chdir=./gcp destroy -auto-approve
     terraform -chdir=./gcp workspace select default
     terraform -chdir=./gcp workspace delete "${workspace_id}"
-    sed -i '' "/^${workspace_id}/d " $deployments_file
+    sed -i "/^${workspace_id}/d " $deployments_file
     ;;
 
   *)
