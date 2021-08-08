@@ -1,5 +1,7 @@
 #!/bin/bash
 # This is a bash script to deploy a kibana PR to google cloud
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+
 action=$1
 type=$2
 value=$3
@@ -31,9 +33,9 @@ if [[  $type && $type == "branch" ]];
 #this is workspace id for terraform, it has to be unique
 workspace_id="${type}-${value}"
 #file for adding and removing deployments
-deployments_file='deployments.txt'
+deployments_file="${SCRIPT_DIR}/deployments.txt"
 
-log_file='kbn_gcp.log'
+log_file="${SCRIPT_DIR}/kbn_gcp.log"
 
 log(){
     echo "$1"
@@ -43,15 +45,15 @@ log(){
 case $action in
 
   deploy)
-    terraform -chdir=./gcp workspace new "${workspace_id}"
+    terraform -chdir="${SCRIPT_DIR}/gcp" workspace new "${workspace_id}"
     log "Deploying instance of ${type} ${value}, ${repo_url}, ${branch}"
-    terraform -chdir=./gcp apply \
+    terraform -chdir="${SCRIPT_DIR}/gcp" apply \
       -var="gcp_name=${gcp_name}" \
       -var="kibana_repo_url=${repo_url}" \
       -var="kibana_repo_branch=${branch}" \
       -auto-approve
-    public_ip=$(terraform -chdir=./gcp output -json | jq  -r '.public_ip.value')
-    kibana_url=$(terraform -chdir=./gcp output -json | jq  -r '.kibana_url.value')
+    public_ip=$(terraform -chdir="${SCRIPT_DIR}/gcp" output -json | jq  -r '.public_ip.value')
+    kibana_url=$(terraform -chdir="${SCRIPT_DIR}/gcp" output -json | jq  -r '.kibana_url.value')
     if [[ $kibana_url != 'null' ]];
       then
         echo "${workspace_id},${gcp_name},${repo_url},${branch},${kibana_url}" >> deployments.txt
@@ -65,21 +67,21 @@ case $action in
 
   status)
     echo "Status of ${type} ${value}, ${repo_url}, ${branch}"
-    terraform -chdir=./gcp workspace select "${workspace_id}"
-    terraform -chdir=./gcp output
+    terraform -chdir="${SCRIPT_DIR}/gcp" workspace select "${workspace_id}"
+    terraform -chdir="${SCRIPT_DIR}/gcp" output
     ;;
 
   ssh)
-    terraform -chdir=./gcp workspace select "${workspace_id}"
-    public_ip=$(terraform -chdir=./gcp output -json | jq  -r '.public_ip.value')
+    terraform -chdir="${SCRIPT_DIR}/gcp" workspace select "${workspace_id}"
+    public_ip=$(terraform -chdir="${SCRIPT_DIR}/gcp" output -json | jq  -r '.public_ip.value')
     eval "ssh -o StrictHostKeyChecking=no ubuntu@${public_ip}"
     ;;
 
   update)
     log "Updating instance of ${type} ${value}, ${repo_url}, ${branch}"
     START=$(date +%s)
-    terraform -chdir=./gcp workspace select "${workspace_id}"
-    terraform_output=$(terraform -chdir=./gcp output -json | jq  -r '.public_ip.value')
+    terraform -chdir="${SCRIPT_DIR}/gcp" workspace select "${workspace_id}"
+    terraform_output=$(terraform -chdir="${SCRIPT_DIR}/gcp" output -json | jq  -r '.public_ip.value')
     eval "ssh -q -o StrictHostKeyChecking=no ubuntu@${terraform_output} bash /tmp/update.sh"
     eval "ssh -q -o StrictHostKeyChecking=no ubuntu@${terraform_output} bash /tmp/bootstrap.sh"
     eval "ssh -q -o StrictHostKeyChecking=no ubuntu@${terraform_output} bash /tmp/start.sh"
@@ -90,20 +92,20 @@ case $action in
     ;;
 
   destroy)
-    terraform -chdir=./gcp workspace select "${workspace_id}"
+    terraform -chdir="${SCRIPT_DIR}/gcp" workspace select "${workspace_id}"
     log "Destroying instance of ${type} ${value}, ${repo_url}, ${branch}"
-    terraform -chdir=./gcp destroy -auto-approve
-    terraform -chdir=./gcp workspace select default
-    terraform -chdir=./gcp workspace delete "${workspace_id}"
+    terraform -chdir="${SCRIPT_DIR}/gcp" destroy -auto-approve
+    terraform -chdir="${SCRIPT_DIR}/gcp" workspace select default
+    terraform -chdir="${SCRIPT_DIR}/gcp" workspace delete "${workspace_id}"
     sed -i "/^${workspace_id}/d " $deployments_file
     ;;
 
   *)
+    echo "----- Usage -----"
+    echo "Use ./kbn-dev-gcp.sh (deploy|destroy|update|status|ssh) (branch|tag|pr) (nameOfBranchOrTagOrPR)"
     echo "----- Current deployments -----"
     if [[ -f $deployments_file ]]; then
        cat $deployments_file
     fi
-    echo "----- Usage -----"
-    echo "Use ./kbn-gcp.sh (numberOfPR) (deploy|destroy|update|status|ssh) (branch|tag|pr) (nameOfBranchOrTagOrPR)"
     ;;
 esac
