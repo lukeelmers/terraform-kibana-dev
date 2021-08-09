@@ -45,7 +45,15 @@ case $action in
 
   deploy)
     START=$(date +%s)
-    terraform -chdir="${SCRIPT_DIR}/gcp" workspace new "${workspace_id}"
+    workspaces=$(terraform -chdir="${SCRIPT_DIR}/gcp" workspace list)
+    if [[ $workspaces == *"${workspace_id}"* ]]; then
+      log "Select workspace"
+     terraform -chdir="${SCRIPT_DIR}/gcp" workspace select "${workspace_id}"
+    else
+      log "Create workspace"
+      terraform -chdir="${SCRIPT_DIR}/gcp" workspace new "${workspace_id}"
+    fi
+
     log "Deploying instance of ${type} ${value}, ${repo_url}, ${branch}"
     terraform -chdir="${SCRIPT_DIR}/gcp" apply \
       -var="gcp_name=${gcp_name}" \
@@ -56,7 +64,7 @@ case $action in
     kibana_url=$(terraform -chdir="${SCRIPT_DIR}/gcp" output -json | jq  -r '.kibana_url.value')
     if [[ $kibana_url != 'null' ]];
       then
-        echo "${workspace_id},${gcp_name},${repo_url},${branch},${kibana_url}" >> deployments.txt
+        echo "${workspace_id},${gcp_name},${repo_url},${branch},${kibana_url}" >> $deployments_file
         log "Success deploying instance ${kibana_url}"
         log "Deploying instance was successful"
         log "Checking for server to be available"
