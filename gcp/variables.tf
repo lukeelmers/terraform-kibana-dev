@@ -61,3 +61,9 @@ variable "gcp_vm_admin_username" {
   type        = string
   description = "Username for authenticating to the provisioned instance."
 }
+
+variable "gcp_name" {
+  default     = "kbn-dev-vm"
+  type        = string
+  description = "GCP instance name"
+}
