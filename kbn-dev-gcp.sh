@@ -1,5 +1,5 @@
 #!/bin/bash
-# This is a bash script to deploy a kibana PR to google cloud
+# This is a bash script to deploy a kibana PR to gcp
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 
 action=$1
@@ -48,7 +48,7 @@ case $action in
     workspaces=$(terraform -chdir="${SCRIPT_DIR}/gcp" workspace list)
     if [[ $workspaces == *"${workspace_id}"* ]]; then
       log "Select workspace"
-     terraform -chdir="${SCRIPT_DIR}/gcp" workspace select "${workspace_id}"
+      terraform -chdir="${SCRIPT_DIR}/gcp" workspace select "${workspace_id}"
     else
       log "Create workspace"
       terraform -chdir="${SCRIPT_DIR}/gcp" workspace new "${workspace_id}"
@@ -60,13 +60,14 @@ case $action in
       -var="kibana_repo_url=${repo_url}" \
       -var="kibana_repo_branch=${branch}" \
       -auto-approve
+    terraform -chdir="${SCRIPT_DIR}/gcp" workspace select "${workspace_id}"
     public_ip=$(terraform -chdir="${SCRIPT_DIR}/gcp" output -json | jq  -r '.public_ip.value')
     kibana_url=$(terraform -chdir="${SCRIPT_DIR}/gcp" output -json | jq  -r '.kibana_url.value')
     if [[ $kibana_url != 'null' ]];
       then
-        echo "${workspace_id},${gcp_name},${repo_url},${branch},${kibana_url}" >> $deployments_file
+        sed -i "/^${workspace_id}/d " $deployments_file
+        echo "${workspace_id}, ${gcp_name}, ${repo_url}, ${branch}, ${kibana_url}" >> $deployments_file
         log "Success deploying instance ${kibana_url}"
-        log "Deploying instance was successful"
         log "Checking for server to be available"
         eval "ssh -q -o StrictHostKeyChecking=no ubuntu@${public_ip} /tmp/check_server_online.sh"
         log "Checking for UI to be available"
