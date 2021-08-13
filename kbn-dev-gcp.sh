@@ -15,30 +15,25 @@ deployments_file="${SCRIPT_DIR}/deployments.txt"
 
 log_file="${SCRIPT_DIR}/kbn_dev.log"
 
-if [[ $type && $type == "pr" ]];
-    then
-        content=$(curl -s -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/elastic/kibana/pulls/${value})
-        repo_url=$( jq -r  '.head.repo.html_url' <<< "${content}" )
-        branch=$( jq -r  '.head.ref' <<< "${content}" )
-    fi
-
-
-if [[  $type && $type == "tag" ]];
-    then
-        branch="tags/${value} -b tags-${value}"
-        gcp_name="kbn-dev-v1-${type}-${value//./-}"
-    fi
-
-if [[  $type && $type == "branch" ]];
-    then
-        branch="${value}"
-        gcp_name="kbn-dev-v1-${type}-${value//./-}"
-    fi
+if [[ $type && $type == "pr" ]]; then
+  content=$(curl -s -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/elastic/kibana/pulls/${value})
+  repo_url=$( jq -r  '.head.repo.html_url' <<< "${content}" )
+  branch=$( jq -r  '.head.ref' <<< "${content}" )
+elif [[  $type && $type == "tag" ]]; then
+  branch="tags/${value} -b tags-${value}"
+  gcp_name="kbn-dev-v1-${type}-${value//./-}"
+elif [[  $type && $type == "branch" ]]; then
+  branch="${value}"
+  gcp_name="kbn-dev-v1-${type}-${value//./-}"
+elif [[  $type  ]]; then
+  echo "The type '${type}' you've entered should be one of: pr, tag, branch"
+  exit;
+fi
 
 
 log(){
-    echo "$1"
-    echo "$(date +'[%F %T %Z]') - ${workspace_id} $1 " >> $log_file
+  echo "$1"
+  echo "$(date +'[%F %T %Z]') - ${workspace_id} $1 " >> $log_file
 }
 
 case $action in
@@ -117,6 +112,7 @@ case $action in
   *)
     echo "----- Usage -----"
     echo "Use ./kbn-dev-gcp.sh (deploy|destroy|update|status|ssh) (branch|tag|pr) (nameOfBranchOrTagOrPR)"
+    echo ""
     echo "----- Current deployments -----"
     if [[ -f $deployments_file ]]; then
        cat $deployments_file
