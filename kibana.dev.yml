@@ -8,7 +8,7 @@ logging:
   appenders:
     file:
       type: file
-      fileName: /var/log/kibana.log
+      fileName: ./kibana.log
       layout:
         type: pattern
   root:

@@ -36,31 +36,36 @@ log(){
   echo "$(date +'[%F %T %Z]') - ${workspace_id} $1 " >> $log_file
 }
 
+removeDeployment() {
+  sed -e "/^${workspace_id}/d" "$deployments_file" >"$deployments_file.new"
+  mv -- "$deployments_file.new" "$deployments_file"
+}
+
 case $action in
 
   deploy)
     START=$(date +%s)
-    workspaces=$(terraform -chdir="${SCRIPT_DIR}/gcp" workspace list)
+    workspaces=$(terraform -chdir="${SCRIPT_DIR}" workspace list)
     if [[ $workspaces == *"${workspace_id}"* ]]; then
       log "Select workspace"
-      terraform -chdir="${SCRIPT_DIR}/gcp" workspace select "${workspace_id}"
+      terraform -chdir="${SCRIPT_DIR}" workspace select "${workspace_id}"
     else
       log "Create workspace"
-      terraform -chdir="${SCRIPT_DIR}/gcp" workspace new "${workspace_id}"
+      terraform -chdir="${SCRIPT_DIR}" workspace new "${workspace_id}"
     fi
 
     log "Deploying instance of ${type} ${value}, ${repo_url}, ${branch}"
-    terraform -chdir="${SCRIPT_DIR}/gcp" apply \
+    terraform -chdir="${SCRIPT_DIR}" apply \
       -var="gcp_name=${gcp_name}" \
       -var="kibana_repo_url=${repo_url}" \
       -var="kibana_repo_branch=${branch}" \
       -auto-approve
-    terraform -chdir="${SCRIPT_DIR}/gcp" workspace select "${workspace_id}"
-    public_ip=$(terraform -chdir="${SCRIPT_DIR}/gcp" output -json | jq  -r '.public_ip.value')
-    kibana_url=$(terraform -chdir="${SCRIPT_DIR}/gcp" output -json | jq  -r '.kibana_url.value')
+    terraform -chdir="${SCRIPT_DIR}" workspace select "${workspace_id}"
+    public_ip=$(terraform -chdir="${SCRIPT_DIR}" output -json | jq  -r '.public_ip.value')
+    kibana_url=$(terraform -chdir="${SCRIPT_DIR}" output -json | jq  -r '.kibana_url.value')
     if [[ $kibana_url != 'null' ]];
       then
-        sed -i "/^${workspace_id}/d " $deployments_file
+        removeDeployment
         echo "${workspace_id}, ${gcp_name}, ${repo_url}, ${branch}, ${kibana_url}" >> $deployments_file
         log "Success deploying instance ${kibana_url}"
         log "Checking for server to be available"
@@ -72,25 +77,28 @@ case $action in
         DIFF=$(echo "$END - $START" | bc)
         log "Whole process took ${DIFF} seconds"
       fi
+    terraform -chdir="${SCRIPT_DIR}" workspace select default
     ;;
 
   status)
     echo "Status of ${type} ${value}, ${repo_url}, ${branch}"
-    terraform -chdir="${SCRIPT_DIR}/gcp" workspace select "${workspace_id}"
-    terraform -chdir="${SCRIPT_DIR}/gcp" output
+    terraform -chdir="${SCRIPT_DIR}" workspace select "${workspace_id}"
+    terraform -chdir="${SCRIPT_DIR}" output
+    terraform -chdir="${SCRIPT_DIR}" workspace select default
     ;;
 
   ssh)
-    terraform -chdir="${SCRIPT_DIR}/gcp" workspace select "${workspace_id}"
-    public_ip=$(terraform -chdir="${SCRIPT_DIR}/gcp" output -json | jq  -r '.public_ip.value')
+    terraform -chdir="${SCRIPT_DIR}" workspace select "${workspace_id}"
+    public_ip=$(terraform -chdir="${SCRIPT_DIR}" output -json | jq  -r '.public_ip.value')
     eval "ssh -o StrictHostKeyChecking=no ubuntu@${public_ip}"
+    terraform -chdir="${SCRIPT_DIR}" workspace select default
     ;;
 
   update)
     log "Updating instance of ${type} ${value}, ${repo_url}, ${branch}"
     START=$(date +%s)
-    terraform -chdir="${SCRIPT_DIR}/gcp" workspace select "${workspace_id}"
-    terraform_output=$(terraform -chdir="${SCRIPT_DIR}/gcp" output -json | jq  -r '.public_ip.value')
+    terraform -chdir="${SCRIPT_DIR}" workspace select "${workspace_id}"
+    terraform_output=$(terraform -chdir="${SCRIPT_DIR}" output -json | jq  -r '.public_ip.value')
     eval "ssh -q -o StrictHostKeyChecking=no ubuntu@${terraform_output} bash /tmp/update.sh"
     eval "ssh -q -o StrictHostKeyChecking=no ubuntu@${terraform_output} bash /tmp/bootstrap.sh"
     eval "ssh -q -o StrictHostKeyChecking=no ubuntu@${terraform_output} bash /tmp/start.sh"
@@ -98,20 +106,21 @@ case $action in
     END=$(date +%s)
     DIFF=$(echo "$END - $START" | bc)
     log "Success updating instance (Duration: ${DIFF}s) of ${type} ${value}, ${repo_url}, ${branch}"
+    terraform -chdir="${SCRIPT_DIR}" workspace select default
     ;;
 
   destroy)
-    terraform -chdir="${SCRIPT_DIR}/gcp" workspace select "${workspace_id}"
+    terraform -chdir="${SCRIPT_DIR}" workspace select "${workspace_id}"
     log "Destroying instance of ${type} ${value}, ${repo_url}, ${branch}"
-    terraform -chdir="${SCRIPT_DIR}/gcp" destroy -auto-approve
-    terraform -chdir="${SCRIPT_DIR}/gcp" workspace select default
-    terraform -chdir="${SCRIPT_DIR}/gcp" workspace delete "${workspace_id}"
-    sed -i "/^${workspace_id}/d " $deployments_file
+    terraform -chdir="${SCRIPT_DIR}" destroy -auto-approve
+    terraform -chdir="${SCRIPT_DIR}" workspace select default
+    terraform -chdir="${SCRIPT_DIR}" workspace delete "${workspace_id}"
+    removeDeployment
     ;;
 
   *)
     echo "----- Usage -----"
-    echo "Use ./kbn-dev-gcp.sh (deploy|destroy|update|status|ssh) (branch|tag|pr) (nameOfBranchOrTagOrPR)"
+    echo "Use ./kbn-dev.sh (deploy|destroy|update|status|ssh) (branch|tag|pr) (nameOfBranchOrTagOrPR)"
     echo ""
     echo "----- Current deployments -----"
     if [[ -f $deployments_file ]]; then

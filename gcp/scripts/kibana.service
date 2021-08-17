@@ -4,7 +4,7 @@ Description=Kibana dev service
 User=ubuntu
 Group=ubuntu
 WorkingDirectory=/home/ubuntu/kibana
-ExecStart=/usr/local/bin/node /home/ubuntu/kibana/scripts/kibana --dev --no-base-path --host 0.0.0.0 -l /var/log/kibana.log
+ExecStart=/usr/local/bin/node /home/ubuntu/kibana/scripts/kibana --dev --verbose --no-base-path --host 0.0.0.0 --log-file /var/log/kibana.log
 
 [Install]
 WantedBy=multi-user.target

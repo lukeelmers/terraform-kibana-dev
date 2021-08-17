@@ -15,5 +15,42 @@ if you don't have one yet.
 * Wait 5-10 minutes, then open Kibana in your browser.
   * If the browser is hanging waiting for Kibana to load, it means the server is still building everything.
   Wait a few minutes, and then try again.
-* To check Kibana logs, ssh into the instance and `tail -f ~/kibana/kibana.log`.
+* To check Kibana logs, ssh into the instance and `tail -f /var/kibana/kibana.log`.
 * Remember to `terraform destroy` when you are done.
+
+## kbn-dev.sh - your friendly deployment bash script helper
+
+Included in this folder is [kbn-dev.sh](./kbn-dev.sh), it's a time saver to quickly deploy PRs from Github.
+A list of current deployments you've created can be found in the file `deployments.txt`. Once you destroy a deployment, 
+it's also removed from the list.
+
+### Usage
+
+Deploy a PR in
+
+`./kbn-dev.sh deploy pr {numberOfPR}`
+
+Update the instance of a PR
+
+`./kbn-dev.sh update pr {numberOfPR}`
+
+SSH into the instance of a PR
+
+`./kbn-dev.sh ssh pr {numberOfPR}`
+
+Destroy a PR
+
+`./kbn-dev.sh destroy pr {numberOfPR}`
+
+
+Show deployments
+
+`./kbn-dev.sh`
+
+#### What's more ...
+
+... it also works with branches and tags
+`./kbn-dev-gcp.sh deploy branch {nameOfBranch}`
+`./kbn-dev-gcp.sh deploy tag {nameOfTag}`
+
+

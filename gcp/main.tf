@@ -47,7 +47,7 @@ resource "google_compute_instance" "kbn_vm" {
   tags = ["kbn-server"]
 
   provisioner "file" {
-    source      = "../scripts/"
+    source      = "./scripts/"
     destination = "/tmp/"
   }
 
