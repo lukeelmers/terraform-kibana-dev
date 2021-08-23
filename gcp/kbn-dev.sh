@@ -2,77 +2,112 @@
 # This is a bash script to deploy a kibana PR to gcp
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 
-action=$1
-type=$2
-value=$3
-repo_url=${repo_url:-"https://github.com/elastic/kibana"}
+ACTION=$1
+TYPE=$2
+VALUE=$3
+
+REPO_URL=${REPO_URL:-"https://github.com/elastic/kibana"}
 #this is the id for the gcp instance, it has to be unique
-gcp_name="kbn-dev-v1-${type}-${value}"
+GCP_NAME="kbn-dev-v1-${TYPE}-${VALUE}"
 #this is workspace id for terraform, it has to be unique
-workspace_id="${type}-${value}"
+WORKSPACE_NAME="${TYPE}-${VALUE}"
 #file for adding and removing deployments
-deployments_file="${SCRIPT_DIR}/deployments.txt"
+DEPLOYMENTS_FILE="${SCRIPT_DIR}/deployments.txt"
 
 log_file="${SCRIPT_DIR}/kbn_dev.log"
 
-if [[ $type && $type == "pr" ]]; then
-  content=$(curl -s -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/elastic/kibana/pulls/${value})
-  repo_url=$( jq -r  '.head.repo.html_url' <<< "${content}" )
-  branch=$( jq -r  '.head.ref' <<< "${content}" )
-elif [[  $type && $type == "tag" ]]; then
-  branch="tags/${value} -b tags-${value}"
-  gcp_name="kbn-dev-v1-${type}-${value//./-}"
-elif [[  $type && $type == "branch" ]]; then
-  branch="${value}"
-  gcp_name="kbn-dev-v1-${type}-${value//./-}"
-elif [[  $type  ]]; then
-  echo "The type '${type}' you've entered should be one of: pr, tag, branch"
+for i in "$@"; do
+  case $i in
+    -e=*|--eui=*)
+      EUI="${i#*=}"
+      shift
+      ;;
+    -g=*|--gcp_name=*)
+      GCP_NAME="${i#*=}"
+      shift
+      ;;
+    -m=*|--makelogs=*)
+      MAKELOGS="${i#*=}"
+      shift
+      ;;
+    *)
+      # unknown option
+      ;;
+  esac
+done
+
+if [[ $TYPE && $TYPE == "pr" ]]; then
+  content=$(curl -s -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/elastic/kibana/pulls/${VALUE})
+  REPO_URL=$( jq -r  '.head.repo.html_url' <<< "${content}" )
+  BRANCH=$( jq -r  '.head.ref' <<< "${content}" )
+elif [[  $TYPE && $TYPE == "tag" ]]; then
+  BRANCH="tags/${VALUE} -b tags-${VALUE}"
+  GCP_NAME="kbn-dev-v1-${TYPE}-${VALUE//./-}"
+elif [[  $TYPE && $TYPE == "BRANCH" ]]; then
+  BRANCH="${VALUE}"
+  GCP_NAME="kbn-dev-v1-${TYPE}-${VALUE//./-}"
+elif [[  $TYPE  ]]; then
+  echo "The TYPE '${TYPE}' you've entered should be one of: pr, tag, branch"
   exit;
 fi
 
 
 log(){
   echo "$1"
-  echo "$(date +'[%F %T %Z]') - ${workspace_id} $1 " >> $log_file
+  echo "$(date +'[%F %T %Z]') - ${WORKSPACE_NAME} $1 " >> $log_file
 }
 
 removeDeployment() {
-  sed -e "/^${workspace_id}/d" "$deployments_file" >"$deployments_file.new"
-  mv -- "$deployments_file.new" "$deployments_file"
+  sed -e "/^${WORKSPACE_NAME}/d" "$DEPLOYMENTS_FILE" >"$DEPLOYMENTS_FILE.new"
+  mv -- "$DEPLOYMENTS_FILE.new" "$DEPLOYMENTS_FILE"
 }
 
-case $action in
+case $ACTION in
 
   deploy)
     START=$(date +%s)
-    workspaces=$(terraform -chdir="${SCRIPT_DIR}" workspace list)
-    if [[ $workspaces == *"${workspace_id}"* ]]; then
+    WORKSPACES=$(terraform -chdir="${SCRIPT_DIR}" workspace list)
+    if [[ $WORKSPACES == *"${WORKSPACE_NAME}"* ]]; then
       log "Select workspace"
-      terraform -chdir="${SCRIPT_DIR}" workspace select "${workspace_id}"
+      terraform -chdir="${SCRIPT_DIR}" workspace select "${WORKSPACE_NAME}"
     else
       log "Create workspace"
-      terraform -chdir="${SCRIPT_DIR}" workspace new "${workspace_id}"
+      terraform -chdir="${SCRIPT_DIR}" workspace new "${WORKSPACE_NAME}"
     fi
 
-    log "Deploying instance of ${type} ${value}, ${repo_url}, ${branch}"
+    log "🌶️ Deploying instance of ${TYPE} ${VALUE}, ${REPO_URL}, ${BRANCH}"
     terraform -chdir="${SCRIPT_DIR}" apply \
-      -var="gcp_name=${gcp_name}" \
-      -var="kibana_repo_url=${repo_url}" \
-      -var="kibana_repo_branch=${branch}" \
+      -var="gcp_name=${GCP_NAME}" \
+      -var="kibana_repo_url=${REPO_URL}" \
+      -var="kibana_repo_branch=${BRANCH}" \
       -auto-approve
-    terraform -chdir="${SCRIPT_DIR}" workspace select "${workspace_id}"
-    public_ip=$(terraform -chdir="${SCRIPT_DIR}" output -json | jq  -r '.public_ip.value')
-    kibana_url=$(terraform -chdir="${SCRIPT_DIR}" output -json | jq  -r '.kibana_url.value')
-    if [[ $kibana_url != 'null' ]];
+    terraform -chdir="${SCRIPT_DIR}" workspace select "${WORKSPACE_NAME}"
+    PUBLIC_IP=$(terraform -chdir="${SCRIPT_DIR}" output -json | jq  -r '.public_ip.value')
+    KIBANA_URL=$(terraform -chdir="${SCRIPT_DIR}" output -json | jq  -r '.kibana_url.value')
+    if [[ $KIBANA_URL != 'null' ]];
       then
         removeDeployment
-        echo "${workspace_id}, ${gcp_name}, ${repo_url}, ${branch}, ${kibana_url}" >> $deployments_file
-        log "Success deploying instance ${kibana_url}"
-        log "Checking for server to be available"
-        eval "ssh -q -o StrictHostKeyChecking=no ubuntu@${public_ip} /tmp/check_server_online.sh"
-        log "Checking for UI to be available"
-        eval "ssh -q -o StrictHostKeyChecking=no ubuntu@${public_ip} /tmp/check_ui_online.sh"
-        log "UI is available"
+        echo "${WORKSPACE_NAME}, ${GCP_NAME}, ${REPO_URL}, ${BRANCH}, ${KIBANA_URL}" >> $DEPLOYMENTS_FILE
+        log "🥬 Success deploying instance ${KIBANA_URL}"
+        if [[ -n "$EUI" ]];
+          then
+             log "🍉 Installing EUI"
+             eval "ssh -q -o StrictHostKeyChecking=no ubuntu@${PUBLIC_IP} /tmp/install_eui.sh ${EUI}"
+        fi
+        log "🌽 Bootstrapping Kibana"
+        eval "ssh -q -o StrictHostKeyChecking=no ubuntu@${PUBLIC_IP} /tmp/bootstrap.sh"
+        log "🥕 Starting Kibana"
+        eval "ssh -q -o StrictHostKeyChecking=no ubuntu@${PUBLIC_IP} /tmp/start.sh"
+        log "🥑 Checking for Kibana server to be available"
+        eval "ssh -q -o StrictHostKeyChecking=no ubuntu@${PUBLIC_IP} /tmp/check_server_online.sh"
+         if [[ -n "$MAKELOGS" ]];
+          then
+             log "🍉 Start making logs"
+             eval "ssh -q -o StrictHostKeyChecking=no ubuntu@${PUBLIC_IP} 'cd ~/kibana && nohup yarn makelogs -c ${MAKELOGS} --url http://elastic:changeme@127.0.0.1:9200 > /dev/null 2>&1 &' "
+        fi
+        log "🍅 Checking for Kibana UI to be available"
+        eval "ssh -q -o StrictHostKeyChecking=no ubuntu@${PUBLIC_IP} /tmp/check_ui_online.sh"
+        log "🥗 🥯 ☕ - Kibana UI is available (${KIBANA_URL}) "
         END=$(date +%s)
         DIFF=$(echo "$END - $START" | bc)
         log "Whole process took ${DIFF} seconds"
@@ -81,40 +116,41 @@ case $action in
     ;;
 
   status)
-    echo "Status of ${type} ${value}, ${repo_url}, ${branch}"
-    terraform -chdir="${SCRIPT_DIR}" workspace select "${workspace_id}"
+    echo "Status of ${TYPE} ${VALUE}, ${REPO_URL}, ${BRANCH}"
+    terraform -chdir="${SCRIPT_DIR}" workspace select "${WORKSPACE_NAME}"
     terraform -chdir="${SCRIPT_DIR}" output
     terraform -chdir="${SCRIPT_DIR}" workspace select default
     ;;
 
   ssh)
-    terraform -chdir="${SCRIPT_DIR}" workspace select "${workspace_id}"
-    public_ip=$(terraform -chdir="${SCRIPT_DIR}" output -json | jq  -r '.public_ip.value')
-    eval "ssh -o StrictHostKeyChecking=no ubuntu@${public_ip}"
+    terraform -chdir="${SCRIPT_DIR}" workspace select "${WORKSPACE_NAME}"
+    PUBLIC_IP=$(terraform -chdir="${SCRIPT_DIR}" output -json | jq  -r '.public_ip.value')
+    eval "ssh -q -o StrictHostKeyChecking=no ubuntu@${PUBLIC_IP}"
     terraform -chdir="${SCRIPT_DIR}" workspace select default
     ;;
 
   update)
-    log "Updating instance of ${type} ${value}, ${repo_url}, ${branch}"
+    log "Updating instance of ${TYPE} ${VALUE}, ${REPO_URL}, ${BRANCH}"
     START=$(date +%s)
-    terraform -chdir="${SCRIPT_DIR}" workspace select "${workspace_id}"
-    terraform_output=$(terraform -chdir="${SCRIPT_DIR}" output -json | jq  -r '.public_ip.value')
-    eval "ssh -q -o StrictHostKeyChecking=no ubuntu@${terraform_output} bash /tmp/update.sh"
-    eval "ssh -q -o StrictHostKeyChecking=no ubuntu@${terraform_output} bash /tmp/bootstrap.sh"
-    eval "ssh -q -o StrictHostKeyChecking=no ubuntu@${terraform_output} bash /tmp/start.sh"
-    eval "ssh -q -o StrictHostKeyChecking=no ubuntu@${terraform_output} bash /tmp/check_server_online.sh"
+    terraform -chdir="${SCRIPT_DIR}" workspace select "${WORKSPACE_NAME}"
+    PUBLIC_IP=$(terraform -chdir="${SCRIPT_DIR}" output -json | jq  -r '.public_ip.value')
+    [[ -n "$EUI" ]]; eval "ssh -q -o StrictHostKeyChecking=no ubuntu@${PUBLIC_IP} /tmp/update_eui.sh ${EUI}"
+    eval "ssh -q -o StrictHostKeyChecking=no ubuntu@${PUBLIC_IP} /tmp/update.sh"
+    eval "ssh -q -o StrictHostKeyChecking=no ubuntu@${PUBLIC_IP} /tmp/bootstrap.sh"
+    eval "ssh -q -o StrictHostKeyChecking=no ubuntu@${PUBLIC_IP} /tmp/start.sh"
+    eval "ssh -q -o StrictHostKeyChecking=no ubuntu@${PUBLIC_IP} /tmp/check_server_online.sh"
     END=$(date +%s)
     DIFF=$(echo "$END - $START" | bc)
-    log "Success updating instance (Duration: ${DIFF}s) of ${type} ${value}, ${repo_url}, ${branch}"
+    log "Success updating instance (Duration: ${DIFF}s) of ${TYPE} ${VALUE}, ${REPO_URL}, ${BRANCH}"
     terraform -chdir="${SCRIPT_DIR}" workspace select default
     ;;
 
   destroy)
-    terraform -chdir="${SCRIPT_DIR}" workspace select "${workspace_id}"
-    log "Destroying instance of ${type} ${value}, ${repo_url}, ${branch}"
+    terraform -chdir="${SCRIPT_DIR}" workspace select "${WORKSPACE_NAME}"
+    log "Destroying instance of ${TYPE} ${VALUE}, ${REPO_URL}, ${BRANCH}"
     terraform -chdir="${SCRIPT_DIR}" destroy -auto-approve
     terraform -chdir="${SCRIPT_DIR}" workspace select default
-    terraform -chdir="${SCRIPT_DIR}" workspace delete "${workspace_id}"
+    terraform -chdir="${SCRIPT_DIR}" workspace delete "${WORKSPACE_NAME}"
     removeDeployment
     ;;
 
@@ -123,8 +159,8 @@ case $action in
     echo "Use ./kbn-dev.sh (deploy|destroy|update|status|ssh) (branch|tag|pr) (nameOfBranchOrTagOrPR)"
     echo ""
     echo "----- Current deployments -----"
-    if [[ -f $deployments_file ]]; then
-       cat $deployments_file
+    if [[ -f $DEPLOYMENTS_FILE ]]; then
+       cat $DEPLOYMENTS_FILE
     fi
     ;;
 esac

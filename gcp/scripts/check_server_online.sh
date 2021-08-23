@@ -1,6 +1,5 @@
 #!/bin/bash
 
-echo "Wait until Kibana server is online"
 kibana_online=false
 while [ $kibana_online == false ]; do
   content=$(curl -s http://elastic:changeme@localhost:5601/api/status)

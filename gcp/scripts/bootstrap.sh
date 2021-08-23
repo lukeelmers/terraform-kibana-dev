@@ -19,4 +19,20 @@ n=${n%/bin/node}; \
 chmod -R 755 $n/bin/*; \
 sudo cp -r $n/{bin,lib,share} /usr/local
 
-BUILD_TS_REFS_DISABLE=true yarn kbn bootstrap
+if [ -d "$HOME/eui" ]
+then
+  echo "Building EUI package"
+  # bootstrap kibana with the given EUI package
+  cd ~/eui
+  yarn install
+  yarn build
+  npm pack
+  eui_package=$(ls -t | head -n1)
+  cd ~/kibana
+  git stash
+  cp "package.json" "package.json.backup"
+  sed -e "s/\"@elastic\/eui\": \"[0-9]*.[0-9]*.[0-9]*\"/\"@elastic\/eui\": \"..\/eui\/${eui_package}\"/g" package.json > package.json.new
+  mv -- package.json.new package.json
+fi
+
+BUILD_TS_REFS_DISABLE=true yarn kbn bootstrap --no-validate
