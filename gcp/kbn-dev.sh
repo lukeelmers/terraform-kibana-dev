@@ -100,7 +100,7 @@ case $ACTION in
         eval "ssh -q -o StrictHostKeyChecking=no ubuntu@${PUBLIC_IP} /tmp/start.sh"
         log "🥑 Checking for Kibana server to be available"
         eval "ssh -q -o StrictHostKeyChecking=no ubuntu@${PUBLIC_IP} /tmp/check_server_online.sh"
-         if [[ -n "$MAKELOGS" ]];
+        if [[ -n "$MAKELOGS" ]];
           then
              log "🍉 Start making logs"
              eval "ssh -q -o StrictHostKeyChecking=no ubuntu@${PUBLIC_IP} 'cd ~/kibana && nohup yarn makelogs -c ${MAKELOGS} --url http://elastic:changeme@127.0.0.1:9200 > /dev/null 2>&1 &' "
@@ -156,7 +156,11 @@ case $ACTION in
 
   *)
     echo "----- Usage -----"
-    echo "Use ./kbn-dev.sh (deploy|destroy|update|status|ssh) (branch|tag|pr) (nameOfBranchOrTagOrPR)"
+    echo "./kbn-dev.sh (deploy|destroy|update|status|ssh) (branch|tag|pr) (nameOfBranchOrTagOrPR)"
+    echo "----- Usage with EUI PR -----"
+    echo "./kbn-dev.sh deploy pr {nrOfPR} --eui={nrOfPR}"
+    echo "----- Usage with makelogs -----"
+    echo "./kbn-dev.sh deploy pr {nrOfPR} --makelogs={nrOfRecordsToCreate}"
     echo ""
     echo "----- Current deployments -----"
     if [[ -f $DEPLOYMENTS_FILE ]]; then
