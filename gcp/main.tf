@@ -33,7 +33,7 @@ resource "google_compute_instance" "kbn_vm" {
 
   # For unknown reasons, this needs to be run in `metadata_startup_script` instead of via
   # the `remote-exec` provisioner in order for GCP to succcessfully install build-essential.
-  metadata_startup_script = "sudo apt-get update; sudo apt-get install build-essential -y"
+  metadata_startup_script = "sudo apt-get update; sudo apt-get install build-essential jq -y"
 
   network_interface {
     network = "default"
@@ -47,20 +47,15 @@ resource "google_compute_instance" "kbn_vm" {
   tags = ["kbn-server"]
 
   provisioner "file" {
-    source      = "../bootstrap.sh"
-    destination = "/tmp/bootstrap.sh"
-  }
-
-  provisioner "file" {
-    source      = "../kibana.dev.yml"
-    destination = "/tmp/kibana.dev.yml"
+    source      = "./scripts/"
+    destination = "/tmp/"
   }
 
   # Change permissions on bash script and execute from ubuntu user.
   provisioner "remote-exec" {
     inline = [
-      "chmod +x /tmp/bootstrap.sh",
-      "nohup /tmp/bootstrap.sh ${var.kibana_repo_url} ${var.kibana_repo_branch}",
+      "chmod +x /tmp/*.sh",
+      "/tmp/install.sh ${var.kibana_repo_url} ${var.kibana_repo_branch}",
     ]
   }
 
