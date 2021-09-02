@@ -43,7 +43,7 @@ if [[ $TYPE && $TYPE == "pr" ]]; then
 elif [[  $TYPE && $TYPE == "tag" ]]; then
   BRANCH="tags/${VALUE} -b tags-${VALUE}"
   GCP_NAME="kbn-dev-v1-${TYPE}-${VALUE//./-}"
-elif [[  $TYPE && $TYPE == "BRANCH" ]]; then
+elif [[  $TYPE && $TYPE == "branch" ]]; then
   BRANCH="${VALUE}"
   GCP_NAME="kbn-dev-v1-${TYPE}-${VALUE//./-}"
 elif [[  $TYPE  ]]; then
@@ -134,7 +134,7 @@ case $ACTION in
     START=$(date +%s)
     terraform -chdir="${SCRIPT_DIR}" workspace select "${WORKSPACE_NAME}"
     PUBLIC_IP=$(terraform -chdir="${SCRIPT_DIR}" output -json | jq  -r '.public_ip.value')
-    [[ -n "$EUI" ]]; eval "ssh -q -o StrictHostKeyChecking=no ubuntu@${PUBLIC_IP} /tmp/update_eui.sh ${EUI}"
+    [[ -n "$EUI" ]]; eval "ssh -q -o StrictHostKeyChecking=no ubuntu@${PUBLIC_IP} '/tmp/update_eui.sh ${EUI}'"
     eval "ssh -q -o StrictHostKeyChecking=no ubuntu@${PUBLIC_IP} /tmp/update.sh"
     eval "ssh -q -o StrictHostKeyChecking=no ubuntu@${PUBLIC_IP} /tmp/bootstrap.sh"
     eval "ssh -q -o StrictHostKeyChecking=no ubuntu@${PUBLIC_IP} /tmp/start.sh"
