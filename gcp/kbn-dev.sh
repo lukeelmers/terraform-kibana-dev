@@ -57,6 +57,7 @@ for i in "$@"; do
   esac
 done
 
+
 START=$(date +%s)
 
 log(){
