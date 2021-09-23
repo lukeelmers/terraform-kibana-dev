@@ -7,8 +7,10 @@ TYPE=$2
 VALUE=$3
 
 REPO_URL=${REPO_URL:-"https://github.com/elastic/kibana"}
+
+GCP_NAME_PREFIX=${KBN_GCP_PREFIX:-"kbn-dev-v1"}
 #this is the id for the gcp instance, it has to be unique
-GCP_NAME="kbn-dev-v1-${TYPE}-${VALUE}"
+GCP_NAME="${GCP_NAME_PREFIX}-${TYPE}-${VALUE}"
 #this is workspace id for terraform, it has to be unique
 WORKSPACE_NAME="${TYPE}-${VALUE}"
 #file for adding and removing deployments
@@ -16,10 +18,29 @@ DEPLOYMENTS_FILE="${SCRIPT_DIR}/deployments.txt"
 
 log_file="${SCRIPT_DIR}/kbn_dev.log"
 
+if [[ $TYPE && $TYPE == "pr" ]]; then
+  content=$(curl -s -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/elastic/kibana/pulls/${VALUE})
+  REPO_URL=$( jq -r  '.head.repo.html_url' <<< "${content}" )
+  BRANCH=$( jq -r  '.head.ref' <<< "${content}" )
+elif [[  $TYPE && $TYPE == "tag" ]]; then
+  BRANCH="tags/${VALUE} -b tags-${VALUE}"
+  GCP_NAME="${GCP_NAME_PREFIX}-${TYPE}-${VALUE//./-}"
+elif [[  $TYPE && $TYPE == "branch" ]]; then
+  BRANCH="${VALUE}"
+  GCP_NAME="${GCP_NAME_PREFIX}-${TYPE}-${VALUE//./-}"
+elif [[  $TYPE  ]]; then
+  echo "The TYPE '${TYPE}' you've entered should be one of: pr, tag, branch"
+  exit;
+fi
+
 for i in "$@"; do
   case $i in
     -e=*|--eui=*)
       EUI="${i#*=}"
+      shift
+      ;;
+    -c=*|--elastic-charts=*)
+      ELASTIC_CHARTS="${i#*=}"
       shift
       ;;
     -g=*|--gcp_name=*)
@@ -36,24 +57,13 @@ for i in "$@"; do
   esac
 done
 
-if [[ $TYPE && $TYPE == "pr" ]]; then
-  content=$(curl -s -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/elastic/kibana/pulls/${VALUE})
-  REPO_URL=$( jq -r  '.head.repo.html_url' <<< "${content}" )
-  BRANCH=$( jq -r  '.head.ref' <<< "${content}" )
-elif [[  $TYPE && $TYPE == "tag" ]]; then
-  BRANCH="tags/${VALUE} -b tags-${VALUE}"
-  GCP_NAME="kbn-dev-v1-${TYPE}-${VALUE//./-}"
-elif [[  $TYPE && $TYPE == "branch" ]]; then
-  BRANCH="${VALUE}"
-  GCP_NAME="kbn-dev-v1-${TYPE}-${VALUE//./-}"
-elif [[  $TYPE  ]]; then
-  echo "The TYPE '${TYPE}' you've entered should be one of: pr, tag, branch"
-  exit;
-fi
 
+START=$(date +%s)
 
 log(){
-  echo "$1"
+  LOG_TS=$(date +%s)
+  LOG_DIFF=$(echo "${LOG_TS} - $START" | bc)
+  echo "$1 (+${LOG_DIFF}s)"
   echo "$(date +'[%F %T %Z]') - ${WORKSPACE_NAME} $1 " >> $log_file
 }
 
@@ -65,7 +75,6 @@ removeDeployment() {
 case $ACTION in
 
   deploy)
-    START=$(date +%s)
     WORKSPACES=$(terraform -chdir="${SCRIPT_DIR}" workspace list)
     if [[ $WORKSPACES == *"${WORKSPACE_NAME}"* ]]; then
       log "Select workspace"
@@ -91,9 +100,16 @@ case $ACTION in
         log "🥬 Success deploying instance ${KIBANA_URL}"
         if [[ -n "$EUI" ]];
           then
-             log "🍉 Installing EUI"
+             log "🍅 Installing EUI"
              eval "ssh -q -o StrictHostKeyChecking=no ubuntu@${PUBLIC_IP} /tmp/install_eui.sh ${EUI}"
         fi
+
+        if [[ -n "$ELASTIC_CHARTS" ]];
+          then
+             log "🥒 Installing Elastic Charts"
+             eval "ssh -q -o StrictHostKeyChecking=no ubuntu@${PUBLIC_IP} /tmp/install_charts.sh ${ELASTIC_CHARTS}"
+        fi
+
         log "🌽 Bootstrapping Kibana"
         eval "ssh -q -o StrictHostKeyChecking=no ubuntu@${PUBLIC_IP} /tmp/bootstrap.sh"
         log "🥕 Starting Kibana"
@@ -131,7 +147,6 @@ case $ACTION in
 
   update)
     log "Updating instance of ${TYPE} ${VALUE}, ${REPO_URL}, ${BRANCH}"
-    START=$(date +%s)
     terraform -chdir="${SCRIPT_DIR}" workspace select "${WORKSPACE_NAME}"
     PUBLIC_IP=$(terraform -chdir="${SCRIPT_DIR}" output -json | jq  -r '.public_ip.value')
     [[ -n "$EUI" ]]; eval "ssh -q -o StrictHostKeyChecking=no ubuntu@${PUBLIC_IP} '/tmp/update_eui.sh ${EUI}'"
@@ -158,7 +173,9 @@ case $ACTION in
     echo "----- Usage -----"
     echo "./kbn-dev.sh (deploy|destroy|update|status|ssh) (branch|tag|pr) (nameOfBranchOrTagOrPR)"
     echo "----- Usage with EUI PR -----"
-    echo "./kbn-dev.sh deploy pr {nrOfPR} --eui={nrOfPR}"
+    echo "./kbn-dev.sh deploy pr {nrOfPR} --eui={nrOfEuiPR}"
+    echo "----- Usage with Elastic Charts PR -----"
+    echo "./kbn-dev.sh deploy pr {nrOfPR} --elastic-charts={elasticChartsPR}"
     echo "----- Usage with makelogs -----"
     echo "./kbn-dev.sh deploy pr {nrOfPR} --makelogs={nrOfRecordsToCreate}"
     echo ""

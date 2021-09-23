@@ -27,11 +27,28 @@ then
   yarn install
   yarn build
   npm pack
-  eui_package=$(ls -t | head -n1)
+  package=$(ls -t | head -n1)
   cd ~/kibana
   git stash
   cp "package.json" "package.json.backup"
-  sed -e "s/\"@elastic\/eui\": \"[0-9]*.[0-9]*.[0-9]*\"/\"@elastic\/eui\": \"..\/eui\/${eui_package}\"/g" package.json > package.json.new
+  sed -e "s/\"@elastic\/eui\": \"[0-9]*.[0-9]*.[0-9]*\"/\"@elastic\/eui\": \"..\/eui\/${package}\"/g" package.json > package.json.new
+  mv -- package.json.new package.json
+fi
+
+if [ -d "$HOME/elastic-charts" ]
+then
+  echo "Building elastic-charts package"
+  # bootstrap kibana with the given elastic chart package
+  cd ~/elastic-charts
+  yarn install
+  yarn build
+  cd ~/elastic-charts/packages/charts
+  npm pack
+  package=$(ls -t | head -n1)
+  cd ~/kibana
+  git stash
+  cp "package.json" "package.json.backup"
+  sed -e "s/\"@elastic\/charts\": \"[0-9]*.[0-9]*.[0-9]*\"/\"@elastic\/charts\": \"..\/elastic-charts\/packages\/charts\/${package}\"/g" package.json > package.json.new
   mv -- package.json.new package.json
 fi
 

@@ -9,8 +9,7 @@ BRANCH=$2
 sudo sysctl -w fs.inotify.max_user_watches=524288
 
 # clone kibana repo, check out branch, and configure environment
-git clone "$REPO.git"
-git -C ~/kibana checkout $BRANCH
+git clone --branch "${BRANCH}" --single-branch --depth 1 "${REPO}.git" kibana
 sudo touch /var/log/kibana.log
 sudo chown ubuntu /var/log/kibana.log
 
