@@ -24,7 +24,7 @@ Included in this folder is [kbn-dev.sh](./kbn-dev.sh), it's a time saver to quic
 A list of current deployments you've created can be found in the file `deployments.txt`. Once you destroy a deployment, 
 it's also removed from the list.
 
-### Basic Usage
+### Basic usage
 
 Deploy a PR in
 
@@ -46,7 +46,7 @@ Show deployments
 
 `./kbn-dev.sh`
 
-### Special Usage
+### Advanced usage
 
 You can deploy a Kibana & EUI PR mashup with
 
@@ -60,7 +60,7 @@ You can also start ingesting data by
 
 `./kbn-dev.sh deploy pr {nrOfPR} --makelogs={nrOfRecordsToCreate}`
 
-By default GCP instances are prefixed with `kbn-dev-v1` you can change this by e.g.
+By default GCP instances are prefixed with `kbn-dev-v1`. You can change this using `KBN_GCP_PREFIX` e.g.
 
 `export KBN_GCP_PREFIX=kibana-for-my-cat`
 
