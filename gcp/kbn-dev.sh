@@ -23,7 +23,7 @@ if [[ $TYPE && $TYPE == "pr" ]]; then
   REPO_URL=$( jq -r  '.head.repo.html_url' <<< "${content}" )
   BRANCH=$( jq -r  '.head.ref' <<< "${content}" )
 elif [[  $TYPE && $TYPE == "tag" ]]; then
-  BRANCH="tags/${VALUE} -b tags-${VALUE}"
+  BRANCH="${VALUE}"
   GCP_NAME="${GCP_NAME_PREFIX}-${TYPE}-${VALUE//./-}"
 elif [[  $TYPE && $TYPE == "branch" ]]; then
   BRANCH="${VALUE}"
