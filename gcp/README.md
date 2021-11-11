@@ -78,3 +78,6 @@ Note that you need to use `--gcp_name` for all other operations
 `./kbn-dev-gcp.sh deploy tag {nameOfTag}`
 
 
+## Notes
+
+- You will need to have a Firewall rule to allow Kibana port (default port 5601 in `kibana.dev.yml` ) with the `kbn-server` [Target Tag](https://cloud.google.com/vpc/docs/add-remove-network-tags#targets_for_firewall_rules)
