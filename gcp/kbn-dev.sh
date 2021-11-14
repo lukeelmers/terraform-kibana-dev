@@ -149,7 +149,6 @@ case $ACTION in
     log "Updating instance of ${TYPE} ${VALUE}, ${REPO_URL}, ${BRANCH}"
     terraform -chdir="${SCRIPT_DIR}" workspace select "${WORKSPACE_NAME}"
     PUBLIC_IP=$(terraform -chdir="${SCRIPT_DIR}" output -json | jq  -r '.public_ip.value')
-    [[ -n "$EUI" ]]; eval "ssh -q -o StrictHostKeyChecking=no ubuntu@${PUBLIC_IP} '/tmp/update_eui.sh ${EUI}'"
     eval "ssh -q -o StrictHostKeyChecking=no ubuntu@${PUBLIC_IP} /tmp/update.sh"
     eval "ssh -q -o StrictHostKeyChecking=no ubuntu@${PUBLIC_IP} /tmp/bootstrap.sh"
     eval "ssh -q -o StrictHostKeyChecking=no ubuntu@${PUBLIC_IP} /tmp/start.sh"
