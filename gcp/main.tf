@@ -16,6 +16,16 @@ provider "google" {
   credentials = file(var.gcp_credentials_file)
 }
 
+resource "random_password" "password" {
+  length           = 32
+  special          = true
+  override_special = "_%@"
+}
+
+locals {
+  kibana_used_elastic_password = coalesce(var.kibana_server_password, random_password.password.result)
+}
+
 resource "google_compute_instance" "kbn_vm" {
   name         = var.gcp_name
   machine_type = var.gcp_instance_type
@@ -55,7 +65,6 @@ resource "google_compute_instance" "kbn_vm" {
   provisioner "remote-exec" {
     inline = [
       "chmod +x /tmp/*.sh",
-      "/tmp/install.sh ${var.kibana_repo_url} ${var.kibana_repo_branch}",
     ]
   }
 

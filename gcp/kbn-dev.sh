@@ -47,6 +47,10 @@ for i in "$@"; do
       GCP_NAME="${i#*=}"
       shift
       ;;
+    -p=*|--password=*)
+      PASSWORD="${i#*=}"
+      shift
+      ;;
     -m=*|--makelogs=*)
       MAKELOGS="${i#*=}"
       shift
@@ -89,15 +93,21 @@ case $ACTION in
       -var="gcp_name=${GCP_NAME}" \
       -var="kibana_repo_url=${REPO_URL}" \
       -var="kibana_repo_branch=${BRANCH}" \
+      -var="kibana_server_password=${PASSWORD}" \
       -auto-approve
     terraform -chdir="${SCRIPT_DIR}" workspace select "${WORKSPACE_NAME}"
     PUBLIC_IP=$(terraform -chdir="${SCRIPT_DIR}" output -json | jq  -r '.public_ip.value')
     KIBANA_URL=$(terraform -chdir="${SCRIPT_DIR}" output -json | jq  -r '.kibana_url.value')
+    KIBANA_SERVER_PASSWORD=$(terraform -chdir="${SCRIPT_DIR}" output -json | jq  -r '.kibana_elastic_password.value')
+    log "🥬 Password ${KIBANA_SERVER_PASSWORD}"
+
     if [[ $KIBANA_URL != 'null' ]];
       then
         removeDeployment
         echo "${WORKSPACE_NAME}, ${GCP_NAME}, ${REPO_URL}, ${BRANCH}, ${KIBANA_URL}" >> $DEPLOYMENTS_FILE
         log "🥬 Success deploying instance ${KIBANA_URL}"
+        log "🥦 Installing Kibana"
+        eval "ssh -q -o StrictHostKeyChecking=no ubuntu@${PUBLIC_IP} /tmp/install.sh ${REPO_URL} ${BRANCH} ${KIBANA_SERVER_PASSWORD}"
         if [[ -n "$EUI" ]];
           then
              log "🍅 Installing EUI"
@@ -119,7 +129,7 @@ case $ACTION in
         if [[ -n "$MAKELOGS" ]];
           then
              log "🍉 Start making logs"
-             eval "ssh -q -o StrictHostKeyChecking=no ubuntu@${PUBLIC_IP} 'cd ~/kibana && nohup yarn makelogs -c ${MAKELOGS} --url http://elastic:changeme@127.0.0.1:9200 > /dev/null 2>&1 &' "
+             eval "ssh -q -o StrictHostKeyChecking=no ubuntu@${PUBLIC_IP} 'cd ~/kibana && nohup yarn makelogs -c ${MAKELOGS} --url http://elastic:${KIBANA_SERVER_PASSWORD}@127.0.0.1:9200 > /dev/null 2>&1 &' "
         fi
         log "🍅 Checking for Kibana UI to be available"
         eval "ssh -q -o StrictHostKeyChecking=no ubuntu@${PUBLIC_IP} /tmp/check_ui_online.sh"
@@ -134,7 +144,9 @@ case $ACTION in
   status)
     echo "Status of ${TYPE} ${VALUE}, ${REPO_URL}, ${BRANCH}"
     terraform -chdir="${SCRIPT_DIR}" workspace select "${WORKSPACE_NAME}"
+    KIBANA_SERVER_PASSWORD=$(terraform -chdir="${SCRIPT_DIR}" output -json | jq  -r '.kibana_elastic_password.value')
     terraform -chdir="${SCRIPT_DIR}" output
+    echo "🥬 Password ${KIBANA_SERVER_PASSWORD}"
     terraform -chdir="${SCRIPT_DIR}" workspace select default
     ;;
 
@@ -170,14 +182,15 @@ case $ACTION in
 
   *)
     echo "----- Usage -----"
-    echo "./kbn-dev.sh (deploy|destroy|update|status|ssh) (branch|tag|pr) (nameOfBranchOrTagOrPR)"
+    echo "./kbn-dev.sh (deploy|destroy|update|status|ssh) (branch|tag|pr) (nameOfBranchOrTagOrPR)" --password={password}
     echo "----- Usage with EUI PR -----"
-    echo "./kbn-dev.sh deploy pr {nrOfPR} --eui={nrOfEuiPR}"
+    echo "./kbn-dev.sh deploy pr {nrOfPR} --eui={nrOfEuiPR}" --password={password}
     echo "----- Usage with Elastic Charts PR -----"
-    echo "./kbn-dev.sh deploy pr {nrOfPR} --elastic-charts={elasticChartsPR}"
+    echo "./kbn-dev.sh deploy pr {nrOfPR} --elastic-charts={elasticChartsPR}" --password={password}
     echo "----- Usage with makelogs -----"
-    echo "./kbn-dev.sh deploy pr {nrOfPR} --makelogs={nrOfRecordsToCreate}"
-    echo ""
+    echo "./kbn-dev.sh deploy pr {nrOfPR} --makelogs={nrOfRecordsToCreate}" --password={password}
+    echo "----- Info -----"
+    echo "If you don't provide a password, it's auto-generated"
     echo "----- Current deployments -----"
     if [[ -f $DEPLOYMENTS_FILE ]]; then
        cat $DEPLOYMENTS_FILE
