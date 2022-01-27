@@ -3,7 +3,7 @@ Description=Kibana dev service
 [Service]
 User=ubuntu
 Group=ubuntu
-ExecStart=/usr/local/bin/node  /home/ubuntu/kibana/scripts/es snapshot -E path.data=/home/ubuntu/data
+ExecStart=/usr/local/bin/node  /home/ubuntu/kibana/scripts/es snapshot -E path.data=/home/ubuntu/data {PASSWORD}
 
 [Install]
 WantedBy=multi-user.target

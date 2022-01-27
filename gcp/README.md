@@ -26,9 +26,9 @@ it's also removed from the list.
 
 ### Basic usage
 
-Deploy a PR in
+Deploy a PR (if you don't set a password, its generated automatically)
 
-`./kbn-dev.sh deploy pr {numberOfPR}`
+`./kbn-dev.sh deploy pr {numberOfPR} --password={elasticUserLoginPWtoSet}` 
 
 Update the instance of a PR
 

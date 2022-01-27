@@ -16,6 +16,12 @@ variable "kibana_server_port" {
   description = "Kibana's dev server port (5601 unless you have explicitly changed it in `kibana.dev.yml`)."
 }
 
+variable "kibana_server_password" {
+  default     = "changeme"
+  type        = string
+  description = "Password for elastic user."
+}
+
 variable "public_key_path" {
   default     = "~/.ssh/id_rsa.pub"
   type        = string
