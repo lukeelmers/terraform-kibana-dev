@@ -99,7 +99,7 @@ case $ACTION in
     PUBLIC_IP=$(terraform -chdir="${SCRIPT_DIR}" output -json | jq  -r '.public_ip.value')
     KIBANA_URL=$(terraform -chdir="${SCRIPT_DIR}" output -json | jq  -r '.kibana_url.value')
     KIBANA_SERVER_PASSWORD=$(terraform -chdir="${SCRIPT_DIR}" output -json | jq  -r '.kibana_elastic_password.value')
-    log "🥬 Password ${KIBANA_SERVER_PASSWORD}"
+    [ -z "$PASSWORD" ] && log "🥥 Generated Password ${KIBANA_SERVER_PASSWORD}"
 
     if [[ $KIBANA_URL != 'null' ]];
       then
